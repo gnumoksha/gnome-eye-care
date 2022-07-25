@@ -17,18 +17,12 @@
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-'use strict';
+"use strict";
 
-// https://gjs-docs.gnome.org/glib20~2.66.1/
 const GLib = imports.gi.GLib;
-const GSound = imports.gi.GSound;
+const Gio = imports.gi.Gio;
 
-// St builds on Clutter to provide more complex widgets like buttons, icons,
-// text entries and scrollable areas. It also adds support for CSS so the
-// style of widgets can be changed programmatically or from a stylesheet.
-// https://gjs-docs.gnome.org/st10~1.0_api/
 const St = imports.gi.St;
-
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
@@ -107,6 +101,8 @@ class Extension {
         if (this.mainEventId > 0) {
             GLib.Source.remove(this.mainEventId);
         }
+
+        log(`${Me.metadata.name} was disabled`);
     }
 
     /**
@@ -123,11 +119,25 @@ class Extension {
         this.text = new St.Label({
             text: "loading...",
         });
-        this.indicator.actor.add_actor(this.text);
+        this.indicator.add_actor(this.text);
+
+        // Bind our indicator visibility to the GSettings value
+        //
+        // NOTE: Binding properties only works with GProperties (properties
+        // registered on a GObject class), not native JavaScript properties
+        this.settings.bind(
+            "show-indicator",
+            this.indicator,
+            "visible",
+            Gio.SettingsBindFlags.DEFAULT
+        );
 
         let item = new PopupMenu.PopupMenuItem("Reset timer");
         this.indicator.menu.addMenuItem(item);
-        item.actor.connect("button_press_event", this._onResetButtonPress.bind(this));
+        item.actor.connect(
+            "button_press_event",
+            this._onResetButtonPress.bind(this)
+        );
 
         // `Main.panel` is the actual panel you see at the top of the screen,
         // not a class constructor.
@@ -151,36 +161,46 @@ class Extension {
         let remainingSeconds = null;
         let breakIntervalCounter = this.breakInterval;
 
-        this.mainEventId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
-            elapsedSeconds += 1;
+        this.mainEventId = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT,
+            1,
+            () => {
+                elapsedSeconds += 1;
 
-            if (elapsedSeconds % 60 == 0) {
-                // a minute has passed
-                breakIntervalCounter--;
-                if (breakIntervalCounter <= 0) {
-                    breakIntervalCounter = this.breakInterval;
+                if (elapsedSeconds % 60 == 0) {
+                    // a minute has passed
+                    breakIntervalCounter--;
+                    if (breakIntervalCounter <= 0) {
+                        breakIntervalCounter = this.breakInterval;
+                    }
+                    this.text.set_text(`${breakIntervalCounter} m`);
+
+                    return GLib.SOURCE_CONTINUE;
                 }
-                this.text.set_text(`${breakIntervalCounter} m`);
+
+                remainingSeconds = this.breakIntervalSeconds - elapsedSeconds;
+                if (
+                    this.settings.get_boolean("show-notification") &&
+                    remainingSeconds == this.settings.get_int("notify-before")
+                ) {
+                    this.notifier.notify(
+                        "Time is approaching",
+                        "The time to take a break is approaching"
+                    );
+                    return GLib.SOURCE_CONTINUE;
+                }
+
+                if (remainingSeconds <= 0) {
+                    this._showNotificationWindow();
+                    elapsedSeconds = 0;
+                    remainingSeconds = null;
+                    breakIntervalCounter = this.breakInterval;
+                    return GLib.SOURCE_CONTINUE;
+                }
 
                 return GLib.SOURCE_CONTINUE;
             }
-
-            remainingSeconds = this.breakIntervalSeconds - elapsedSeconds;
-            if (remainingSeconds == this.settings.get_int("notify-before")) {
-                this.notifier.notify("Time is approaching", "The time to take a break is approaching");
-                return GLib.SOURCE_CONTINUE;
-            }
-
-            if (remainingSeconds <= 0) {
-                this._showNotificationWindow();
-                elapsedSeconds = 0;
-                remainingSeconds = null;
-                breakIntervalCounter = this.breakInterval;
-                return GLib.SOURCE_CONTINUE;
-            }
-
-            return GLib.SOURCE_CONTINUE;
-        });
+        );
     }
 
     _showNotificationWindow() {
