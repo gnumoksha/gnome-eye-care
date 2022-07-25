@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.healthy-eyes" path="/org/gnome/shell/extensions/healthy-eyes/">
+  <!--
+    #TODO
     <key name="show-indicator" type="b">
       <default>true</default>
       <summary>Whether to show the indicator on the panel menu</summary>
@@ -10,10 +12,15 @@
       <default>true</default>
       <summary>Whether to show a desktop notification when the time to take a break is approaching</summary>
     </key>
-
-    <key type="i" name="show-notification-before">
+-->
+    <key name="notify-before" type="i">
       <default>20</default>
-      <summary>Show the desktop notification this amount of time before the "take a break" window</summary>
+      <summary>Show the desktop notification this amount of seconds before the "take a break" dialog</summary>
+    </key>
+
+    <key name="break-timeout" type="i">
+      <default>20</default>
+      <summary>The "take a break" dialog will last for this amount of minutes</summary>
     </key>
   </schema>
 </schemalist>
