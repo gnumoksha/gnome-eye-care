@@ -32,8 +32,8 @@ class TakeBreakDialog extends ModalDialog.ModalDialog {
             styleClass: 'welcome-dialog'
         });
 
-        this.interval = interval;
-        this.timerId = 0;
+        this._interval = interval;
+        this._timerId = 0;
         this._buildLayout();
     }
 
@@ -41,8 +41,8 @@ class TakeBreakDialog extends ModalDialog.ModalDialog {
         const title = _('Focus your eyes on something\nat least 20 feet (6 meters) away.');
         const content = new Dialog.MessageDialogContent({
             title: title,
-            description: this.interval + "s",
-         });
+            description: this._interval + "s",
+        });
 
         const icon = new St.Widget({ style_class: 'welcome-dialog-image' });
         content.insert_child_at_index(icon, 0);
@@ -55,14 +55,14 @@ class TakeBreakDialog extends ModalDialog.ModalDialog {
             key: Clutter.KEY_Escape,
         });
 
-        let i = this.interval;
-        this.timerId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+        let i = this._interval;
+        this._timerId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
             i--;
             content.description = i + "s";
 
             if (i <= 0) {
                 let player = global.display.get_sound_player();
-                player.play_from_theme('complete', _("Done"), null);
+                player.play_from_theme("complete", _("Done"), null);
 
                 this.close();
                 return GLib.SOURCE_REMOVE;
@@ -73,8 +73,8 @@ class TakeBreakDialog extends ModalDialog.ModalDialog {
     }
 
     close() {
-        if (this.timerId > 0) {
-            GLib.Source.remove(this.timerId);
+        if (this._timerId > 0) {
+            GLib.Source.remove(this._timerId);
         }
 
         super.close();

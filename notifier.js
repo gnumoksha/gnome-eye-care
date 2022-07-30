@@ -28,17 +28,17 @@ var Notifier = class Notifier
          * Holds the instance of message tray.
          * @type {object}
          */
-        this.messageTray = null;
+        this._messageTray = null;
     }
 
     /**
      * Set up the objects needed for system tray notifications.
      */
     setup() {
-        this.messageTray = new MessageTray.MessageTray();
+        this._messageTray = new MessageTray.MessageTray();
 
         const source = new MessageTray.SystemNotificationSource();
-        this.messageTray.add(source);
+        this._messageTray.add(source);
     }
 
     /**
@@ -49,7 +49,7 @@ var Notifier = class Notifier
      */
     notify(title, banner) {
         let source = new MessageTray.SystemNotificationSource();
-        this.messageTray.add(source);
+        this._messageTray.add(source);
 
         let notification = new MessageTray.Notification(source, title, banner);
         notification.setTransient(true);

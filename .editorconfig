@@ -13,6 +13,7 @@ charset = utf-8
 [*.{js,py,css}]
 indent_style = space
 indent_size = 4
+max_line_length = 100
 
 # XML, Meson, Glade: 2-space indents
 [*.{xml,build,ui}]

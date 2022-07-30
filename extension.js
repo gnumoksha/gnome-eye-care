@@ -35,19 +35,7 @@ const Dialog = Me.imports.dialog;
 class Extension {
     constructor() {
         /**
-         * The "take a break" dialog will be shown after this amount of minutes.
-         * @type {number}
-         */
-        this.breakInterval = 20;
-
-        /**
-         * The dialog interval, but in seconds instead of minutes.
-         * @type {number}
-         */
-        this.breakIntervalSeconds = this.breakInterval * 60;
-
-        /**
-         * Holds the instance of the pannel indicator.
+         * Holds the instance of the panel indicator.
          * @type {object}
          */
         this.indicator = null;
@@ -61,29 +49,28 @@ class Extension {
         /**
          * @type {object}
          */
-        this.notifier = null;
+        this._notifier = null;
     }
 
     /**
      * Special method invoked when the extension has been enabled.
      */
     enable() {
-        log(`enabling ${Me.metadata.name}`);
+        log(`Enabling the extension ${Me.metadata.name}`);
 
-        this.settings = ExtensionUtils.getSettings(
-            "org.gnome.shell.extensions.healthy-eyes"
-        );
+        this._settings = new Settings();
 
         this._createMenuIndicator();
 
+        this._timerState = new TimerState(this._settings.getBreakInterval());
         this._setupTimer();
 
-        this.text.set_text(`${this.breakInterval} m`);
+        this.text.set_text(`${this._settings.getBreakInterval()} m`);
 
-        this.notifier = new Notifier.Notifier();
-        this.notifier.setup();
+        this._notifier = new Notifier.Notifier();
+        this._notifier.setup();
 
-        log(`${Me.metadata.name} was enabled`);
+        log(`The extension ${Me.metadata.name} was enabled`);
     }
 
     /**
@@ -125,19 +112,13 @@ class Extension {
         //
         // NOTE: Binding properties only works with GProperties (properties
         // registered on a GObject class), not native JavaScript properties
-        this.settings.bind(
-            "show-indicator",
-            this.indicator,
-            "visible",
-            Gio.SettingsBindFlags.DEFAULT
-        );
+        this._settings
+            .getUserSettings()
+            .bind("show-indicator", this.indicator, "visible", Gio.SettingsBindFlags.DEFAULT);
 
         let item = new PopupMenu.PopupMenuItem("Reset timer");
         this.indicator.menu.addMenuItem(item);
-        item.actor.connect(
-            "button_press_event",
-            this._onResetButtonPress.bind(this)
-        );
+        item.actor.connect("button_press_event", this._onResetButtonPress.bind(this));
 
         // `Main.panel` is the actual panel you see at the top of the screen,
         // not a class constructor.
@@ -148,8 +129,8 @@ class Extension {
      * Executed when the user press the "Reset timer" button.
      */
     _onResetButtonPress(actor, event) {
-        this.breakInterval = 20;
-        this.text.set_text(`${this.breakInterval} m`);
+        this._timerState.reset();
+        this.text.set_text(`${this._settings.getBreakInterval()} m`);
         this.indicator.menu.close();
     }
 
@@ -157,61 +138,150 @@ class Extension {
      * Set up the main loop.
      */
     _setupTimer() {
-        let elapsedSeconds = 0;
-        let remainingSeconds = null;
-        let breakIntervalCounter = this.breakInterval;
+        this.mainEventId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+            this._timerState.elapsedSeconds += 1;
 
-        this.mainEventId = GLib.timeout_add_seconds(
-            GLib.PRIORITY_DEFAULT,
-            1,
-            () => {
-                elapsedSeconds += 1;
-
-                if (elapsedSeconds % 60 == 0) {
-                    // a minute has passed
-                    breakIntervalCounter--;
-                    if (breakIntervalCounter <= 0) {
-                        breakIntervalCounter = this.breakInterval;
-                    }
-                    this.text.set_text(`${breakIntervalCounter} m`);
-
-                    return GLib.SOURCE_CONTINUE;
+            if (this._timerState.elapsedSeconds % 60 == 0) {
+                // a minute has passed
+                this._timerState.breakIntervalCounter--;
+                if (this._timerState.breakIntervalCounter <= 0) {
+                    this._timerState.breakIntervalCounter = this._settings.getBreakInterval();
                 }
+                this.text.set_text(`${this._timerState.breakIntervalCounter} m`);
 
-                remainingSeconds = this.breakIntervalSeconds - elapsedSeconds;
-                if (
-                    this.settings.get_boolean("show-notification") &&
-                    remainingSeconds == this.settings.get_int("notify-before")
-                ) {
-                    this.notifier.notify(
-                        "Time is approaching",
-                        "The time to take a break is approaching"
-                    );
-                    return GLib.SOURCE_CONTINUE;
-                }
+                // return GLib.SOURCE_CONTINUE;
+            }
 
-                if (remainingSeconds <= 0) {
-                    this._showNotificationWindow();
-                    elapsedSeconds = 0;
-                    remainingSeconds = null;
-                    breakIntervalCounter = this.breakInterval;
-                    return GLib.SOURCE_CONTINUE;
-                }
+            this._timerState.remainingSeconds =
+                this._settings.getBreakIntervalSeconds() - this._timerState.elapsedSeconds;
 
+            if (
+                this._settings.canShowNotification() &&
+                this._timerState.remainingSeconds == this._settings.getNotificationBefore()
+            ) {
+                this._notifier.notify(
+                    _("Time is approaching"),
+                    _("The time to take a break is approaching")
+                );
                 return GLib.SOURCE_CONTINUE;
             }
-        );
+
+            if (this._timerState.remainingSeconds <= 0) {
+                this._showNotificationDialog();
+                this._timerState.reset();
+            }
+
+            return GLib.SOURCE_CONTINUE;
+        });
     }
 
-    _showNotificationWindow() {
-        let breakTimeout = this.settings.get_int("break-timeout");
-        let dialog = new Dialog.TakeBreakDialog(breakTimeout);
+    _showNotificationDialog() {
+        /**
+        dialogLayout,
+        contentLayout,
+        buttonLayout,
+        */
+        let dialog = new Dialog.TakeBreakDialog(this._settings.getBreakTimeout());
+        dialog.connect("closed", this._onDialogClosed.bind(this));
         dialog.open();
+    }
+
+    _onDialogClosed() {
+        // the dialog will run for >= 20 seconds so, we need to restart the
+        // timer in order to not count the time the dialog is open
+        this._timerState.reset();
+    }
+}
+
+class TimerState {
+    /**
+     * @param {number} breakInterval
+     */
+    constructor(breakInterval) {
+        this._breakInterval = breakInterval;
+        this.reset();
+    }
+
+    /**
+     * @return {void}
+     */
+    reset() {
+        this.elapsedSeconds = 0;
+        this.remainingSeconds = null;
+        this.breakIntervalCounter = this._breakInterval;
+    }
+}
+
+/**
+ * Wrap around the extension's user settings and static settings.
+ */
+class Settings {
+    constructor() {
+        /**
+         * The "take a break" dialog will be shown after this amount of minutes.
+         * @type {number}
+         */
+        this._breakInterval = 20;
+
+        /**
+         * The dialog interval, but in seconds instead of minutes.
+         * @type {number}
+         */
+        this._breakIntervalSeconds = this._breakInterval * 60;
+    }
+
+    /**
+     * Returns the extension's settings that can be changed anytime on the
+     * settings window {@link project://prefs.js}.
+     *
+     * @returns {object}
+     */
+    getUserSettings() {
+        if (this._extensionSettings == null) {
+            this._extensionSettings = ExtensionUtils.getSettings(
+                "org.gnome.shell.extensions.healthy-eyes"
+            );
+        }
+
+        return this._extensionSettings;
+    }
+
+    /**
+     * @return {bool}
+     */
+    canShowNotification() {
+        return this.getUserSettings().get_boolean("show-notification");
+    }
+
+    /**
+     * @return {number}
+     */
+    getNotificationBefore() {
+        return this.getUserSettings().get_int("notify-before");
+    }
+
+    /**
+     * @return {number}
+     */
+    getBreakInterval() {
+        return this._breakInterval;
+    }
+
+    /**
+     * @return {number}
+     */
+    getBreakIntervalSeconds() {
+        return this._breakIntervalSeconds;
+    }
+
+    /**
+     * @return {number}
+     */
+    getBreakTimeout() {
+        return this.getUserSettings().get_int("break-timeout");
     }
 }
 
 function init() {
-    log(`initializing ${Me.metadata.name}`);
-
     return new Extension();
 }
