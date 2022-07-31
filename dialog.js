@@ -26,57 +26,58 @@ const ModalDialog = imports.ui.modalDialog;
 const Dialog = imports.ui.dialog;
 
 var TakeBreakDialog = GObject.registerClass(
-class TakeBreakDialog extends ModalDialog.ModalDialog {
-    _init(interval) {
-        super._init({
-            styleClass: 'welcome-dialog'
-        });
+    class TakeBreakDialog extends ModalDialog.ModalDialog {
+        _init(interval) {
+            super._init({
+                styleClass: "welcome-dialog",
+            });
 
-        this._interval = interval;
-        this._timerId = 0;
-        this._buildLayout();
-    }
-
-    _buildLayout() {
-        const title = _('Focus your eyes on something\nat least 20 feet (6 meters) away.');
-        const content = new Dialog.MessageDialogContent({
-            title: title,
-            description: this._interval + "s",
-        });
-
-        const icon = new St.Widget({ style_class: 'welcome-dialog-image' });
-        content.insert_child_at_index(icon, 0);
-
-        this.contentLayout.add_child(content);
-
-        this.addButton({
-            label: _('Close'),
-            action: () => this.close(),
-            key: Clutter.KEY_Escape,
-        });
-
-        let i = this._interval;
-        this._timerId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
-            i--;
-            content.description = i + "s";
-
-            if (i <= 0) {
-                let player = global.display.get_sound_player();
-                player.play_from_theme("complete", _("Done"), null);
-
-                this.close();
-                return GLib.SOURCE_REMOVE;
-            }
-
-            return GLib.SOURCE_CONTINUE;
-        });
-    }
-
-    close() {
-        if (this._timerId > 0) {
-            GLib.Source.remove(this._timerId);
+            this._interval = interval;
+            this._timerId = 0;
+            this._buildLayout();
         }
 
-        super.close();
+        _buildLayout() {
+            const title = _("Focus your eyes on something\nat least 20 feet (6 meters) away.");
+            const content = new Dialog.MessageDialogContent({
+                title: title,
+                description: this._interval + "s",
+            });
+
+            const icon = new St.Widget({ style_class: "welcome-dialog-image" });
+            content.insert_child_at_index(icon, 0);
+
+            this.contentLayout.add_child(content);
+
+            this.addButton({
+                label: _("Close"),
+                action: () => this.close(),
+                key: Clutter.KEY_Escape,
+            });
+
+            let i = this._interval;
+            this._timerId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+                i--;
+                content.description = i + "s";
+
+                if (i <= 0) {
+                    let player = global.display.get_sound_player();
+                    player.play_from_theme("complete", _("Done"), null);
+
+                    this.close();
+                    return GLib.SOURCE_REMOVE;
+                }
+
+                return GLib.SOURCE_CONTINUE;
+            });
+        }
+
+        close() {
+            if (this._timerId > 0) {
+                GLib.Source.remove(this._timerId);
+            }
+
+            super.close();
+        }
     }
-});
+);

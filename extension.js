@@ -38,13 +38,13 @@ class Extension {
          * Holds the instance of the panel indicator.
          * @type {object}
          */
-        this.indicator = null;
+        this._indicator = null;
 
         /**
          * The event id for the main loop of this extension.
          * @type {number}
          */
-        this.mainEventId = 0;
+        this._mainEventId = 0;
 
         /**
          * @type {object}
@@ -82,11 +82,11 @@ class Extension {
     disable() {
         log(`disabling ${Me.metadata.name}`);
 
-        this.indicator.destroy();
-        this.indicator = null;
+        this._indicator.destroy();
+        this._indicator = null;
 
-        if (this.mainEventId > 0) {
-            GLib.Source.remove(this.mainEventId);
+        if (this._mainEventId > 0) {
+            GLib.Source.remove(this._mainEventId);
         }
 
         log(`${Me.metadata.name} was disabled`);
@@ -100,13 +100,13 @@ class Extension {
         let indicatorName = `${Me.metadata.name} Indicator`;
 
         // Create a panel button
-        this.indicator = new PanelMenu.Button(0.0, indicatorName, false);
+        this._indicator = new PanelMenu.Button(0.0, indicatorName, false);
 
         // add text label for the countdown
         this.text = new St.Label({
             text: "loading...",
         });
-        this.indicator.add_actor(this.text);
+        this._indicator.add_actor(this.text);
 
         // Bind our indicator visibility to the GSettings value
         //
@@ -114,15 +114,15 @@ class Extension {
         // registered on a GObject class), not native JavaScript properties
         this._settings
             .getUserSettings()
-            .bind("show-indicator", this.indicator, "visible", Gio.SettingsBindFlags.DEFAULT);
+            .bind("show-indicator", this._indicator, "visible", Gio.SettingsBindFlags.DEFAULT);
 
         let item = new PopupMenu.PopupMenuItem("Reset timer");
-        this.indicator.menu.addMenuItem(item);
+        this._indicator.menu.addMenuItem(item);
         item.actor.connect("button_press_event", this._onResetButtonPress.bind(this));
 
         // `Main.panel` is the actual panel you see at the top of the screen,
         // not a class constructor.
-        Main.panel.addToStatusArea(indicatorName, this.indicator);
+        Main.panel.addToStatusArea(indicatorName, this._indicator);
     }
 
     /**
@@ -131,14 +131,14 @@ class Extension {
     _onResetButtonPress(actor, event) {
         this._timerState.reset();
         this.text.set_text(`${this._settings.getBreakInterval()} m`);
-        this.indicator.menu.close();
+        this._indicator.menu.close();
     }
 
     /**
      * Set up the main loop.
      */
     _setupTimer() {
-        this.mainEventId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+        this._mainEventId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
             this._timerState.elapsedSeconds += 1;
 
             if (this._timerState.elapsedSeconds % 60 == 0) {
