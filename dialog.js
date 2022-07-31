@@ -49,6 +49,14 @@ var TakeBreakDialog = GObject.registerClass(
 
             this.contentLayout.add_child(content);
 
+            /**
+             * When the dialog opens, the "Close" button will get focus so,
+             * if the user press "space" the dialog will close.
+             * To avoid that, I set the focus to something else before adding
+             * the button.
+             */
+            this.dialogLayout._setInitialKeyFocus(content);
+
             this.addButton({
                 label: _("Close"),
                 action: () => this.close(),
