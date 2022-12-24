@@ -1,11 +1,40 @@
+/*
+ * Healthy eyes
+ * Copyright (C) 2022  me@tobias.ws
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 "use strict";
 
 const { Adw, Gio, Gtk } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
+const Settings = Me.imports.settings;
 
-function init() {}
+/**
+ * Like `extension.js` this is used for any one-time setup like translations.
+ *
+ * @param {ExtensionMeta} meta - An extension meta object, described below.
+ */
+function init(meta) {
+    if (meta.metadata) {
+        log(`initializing ${meta.metadata.name} Preferences`);
+    }
+}
 
 function fillPreferencesWindow(window) {
     // Use the same GSettings schema as in `extension.js`
@@ -37,11 +66,11 @@ function firstRow(group, settings) {
 
     // Create the switch and bind its value to the `show-indicator` key
     const toggle = new Gtk.Switch({
-        active: settings.get_boolean("show-indicator"),
+        active: settings.get_boolean(Settings.KEY_SHOW_INDICATOR),
         valign: Gtk.Align.CENTER,
     });
     settings.bind(
-        "show-indicator",
+        Settings.KEY_SHOW_INDICATOR,
         toggle,
         "active",
         Gio.SettingsBindFlags.DEFAULT
@@ -60,11 +89,11 @@ function secondRow(group, settings) {
     group.add(row);
 
     const toggle = new Gtk.Switch({
-        active: settings.get_boolean("show-notification"),
+        active: settings.get_boolean(Settings.KEY_SHOW_NOTIFICATION),
         valign: Gtk.Align.CENTER,
     });
     settings.bind(
-        "show-notification",
+        Settings.KEY_SHOW_NOTIFICATION,
         toggle,
         "active",
         Gio.SettingsBindFlags.DEFAULT
@@ -86,10 +115,10 @@ function thirdRow(group, settings) {
     spinButton.set_numeric(true);
     spinButton.set_increments(1, 5);
     spinButton.set_snap_to_ticks(true);
-    spinButton.set_value(settings.get_int("notify-before"));
+    spinButton.set_value(settings.get_int(Settings.KEY_NOTIFY_BEFORE));
 
     settings.bind(
-        "notify-before",
+        Settings.KEY_NOTIFY_BEFORE,
         spinButton,
         "value",
         Gio.SettingsBindFlags.DEFAULT
@@ -111,10 +140,10 @@ function fourthRow(group, settings) {
     spinButton.set_numeric(true);
     spinButton.set_increments(1, 5);
     spinButton.set_snap_to_ticks(true);
-    spinButton.set_value(settings.get_int("break-timeout"));
+    spinButton.set_value(settings.get_int(Settings.KEY_BREAK_TIMEOUT));
 
     settings.bind(
-        "break-timeout",
+        Settings.KEY_BREAK_TIMEOUT,
         spinButton,
         "value",
         Gio.SettingsBindFlags.DEFAULT

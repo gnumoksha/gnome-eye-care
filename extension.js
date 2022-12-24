@@ -31,6 +31,8 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Notifier = Me.imports.notifier;
 const Dialog = Me.imports.dialog;
+const Settings = Me.imports.settings;
+const MyQuickSettings = Me.imports.quickSettings;
 
 class Extension {
     constructor() {
@@ -58,7 +60,7 @@ class Extension {
     enable() {
         log(`Enabling the extension ${Me.metadata.name}`);
 
-        this._settings = new Settings();
+        this._settings = new Settings.ExtensionSettings();
 
         this._createMenuIndicator();
 
@@ -69,6 +71,8 @@ class Extension {
 
         this._notifier = new Notifier.Notifier();
         this._notifier.setup();
+
+        this._myQuickSettings = new MyQuickSettings.MyQuickSettings(this._settings);
 
         log(`The extension ${Me.metadata.name} was enabled`);
     }
@@ -114,7 +118,7 @@ class Extension {
         // registered on a GObject class), not native JavaScript properties
         this._settings
             .getUserSettings()
-            .bind("show-indicator", this._indicator, "visible", Gio.SettingsBindFlags.DEFAULT);
+            .bind(Settings.KEY_SHOW_INDICATOR, this._indicator, "visible", Gio.SettingsBindFlags.DEFAULT);
 
         let item = new PopupMenu.PopupMenuItem("Reset timer");
         this._indicator.menu.addMenuItem(item);
@@ -213,75 +217,17 @@ class TimerState {
 }
 
 /**
- * Wrap around the extension's user settings and static settings.
+ * This function is called once when your extension is loaded, not enabled. This
+ * is a good time to setup translations or anything else you only do once.
+ *
+ * You MUST NOT make any changes to GNOME Shell, connect any signals or add any
+ * MainLoop sources here.
+ *
+ * @param {ExtensionMeta} meta - An extension meta object, described below.
+ * @returns {Object} an object with enable() and disable() methods
  */
-class Settings {
-    constructor() {
-        /**
-         * The "take a break" dialog will be shown after this amount of minutes.
-         * @type {number}
-         */
-        this._breakInterval = 20;
+function init(meta) {
+    log(`Initializing ${meta.metadata.name}`);
 
-        /**
-         * The dialog interval, but in seconds instead of minutes.
-         * @type {number}
-         */
-        this._breakIntervalSeconds = this._breakInterval * 60;
-    }
-
-    /**
-     * Returns the extension's settings that can be changed anytime on the
-     * settings window {@link project://prefs.js}.
-     *
-     * @returns {object}
-     */
-    getUserSettings() {
-        if (this._extensionSettings == null) {
-            this._extensionSettings = ExtensionUtils.getSettings(
-                "org.gnome.shell.extensions.healthy-eyes"
-            );
-        }
-
-        return this._extensionSettings;
-    }
-
-    /**
-     * @return {bool}
-     */
-    canShowNotification() {
-        return this.getUserSettings().get_boolean("show-notification");
-    }
-
-    /**
-     * @return {number}
-     */
-    getNotificationBefore() {
-        return this.getUserSettings().get_int("notify-before");
-    }
-
-    /**
-     * @return {number}
-     */
-    getBreakInterval() {
-        return this._breakInterval;
-    }
-
-    /**
-     * @return {number}
-     */
-    getBreakIntervalSeconds() {
-        return this._breakIntervalSeconds;
-    }
-
-    /**
-     * @return {number}
-     */
-    getBreakTimeout() {
-        return this.getUserSettings().get_int("break-timeout");
-    }
-}
-
-function init() {
     return new Extension();
 }
