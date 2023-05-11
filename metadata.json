@@ -3,7 +3,7 @@
   "description": "Helps you to keep your eyes healthy by following the 20-20-20 rule.",
   "uuid": "healthy-eyes@gnumoksha.gitlab.io",
   "shell-version": [
-    "43"
+    "43", "44"
   ],
   "session-modes": [
     "user"
