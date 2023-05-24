@@ -3,7 +3,11 @@
   "description": "Helps you to keep your eyes healthy by following the 20-20-20 rule.",
   "uuid": "healthy-eyes@gnumoksha.gitlab.io",
   "shell-version": [
-    "42"
+    "43", "44"
   ],
-  "url": "https://gitlab.com/gnumoksha/gnome-healthy-eyes"
+  "session-modes": [
+    "user"
+  ],
+  "url": "https://gitlab.com/gnumoksha/gnome-healthy-eyes",
+  "version": 2
 }
