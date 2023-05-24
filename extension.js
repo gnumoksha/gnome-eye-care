@@ -1,6 +1,6 @@
 /*
  * Healthy eyes
- * Copyright (C) 2022  me@tobias.ws
+ * Copyright (C) 2022, 2023 me@tobias.ws
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -120,9 +120,13 @@ class Extension {
             .getUserSettings()
             .bind(Settings.KEY_SHOW_INDICATOR, this._indicator, "visible", Gio.SettingsBindFlags.DEFAULT);
 
-        let item = new PopupMenu.PopupMenuItem("Reset timer");
-        this._indicator.menu.addMenuItem(item);
-        item.actor.connect("button_press_event", this._onResetButtonPress.bind(this));
+        let pauseMenuItem = new PopupMenu.PopupMenuItem("Stop / Resume");
+        this._indicator.menu.addMenuItem(pauseMenuItem);
+        pauseMenuItem.actor.connect("button_press_event", this._onStopButtonPress.bind(this));
+
+        let resetMenuItem = new PopupMenu.PopupMenuItem("Reset");
+        this._indicator.menu.addMenuItem(resetMenuItem);
+        resetMenuItem.actor.connect("button_press_event", this._onResetButtonPress.bind(this));
 
         // `Main.panel` is the actual panel you see at the top of the screen,
         // not a class constructor.
@@ -130,7 +134,26 @@ class Extension {
     }
 
     /**
-     * Executed when the user press the "Reset timer" button.
+     * Executed when the user press the "Stop" button.
+     *
+     * @param {PopupMenu.PopupMenuItem} actor
+     * @param {Gi.Clutter.Event} event
+     */
+    _onStopButtonPress(actor, event) {
+        if (this._timerState.isStopped()) {
+            this._timerState.resume();
+            this.text.set_text(`${this._timerState.breakIntervalCounter} m`);
+            actor.label = "Stop"; // #FIXME don't work log(Object.getOwnPropertyNames(actor));
+        } else {
+            this._timerState.stop();
+            this.text.set_text(`${this._timerState.breakIntervalCounter} m ⏹️`);
+            actor.label = "Resume"; // #FIXME don't work
+        }
+        this._indicator.menu.close();
+    }
+
+    /**
+     * Executed when the user press the "Reset" button.
      */
     _onResetButtonPress(actor, event) {
         this._timerState.reset();
@@ -143,17 +166,18 @@ class Extension {
      */
     _setupTimer() {
         this._mainEventId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
-            this._timerState.elapsedSeconds += 1;
+            if (this._timerState.isStopped()) {
+                return GLib.SOURCE_CONTINUE;
+            }
 
-            if (this._timerState.elapsedSeconds % 60 == 0) {
-                // a minute has passed
+            this._timerState.incrementOneSecond();
+
+            if (this._timerState.aMinuteHasPassed()) {
                 this._timerState.breakIntervalCounter--;
                 if (this._timerState.breakIntervalCounter <= 0) {
                     this._timerState.breakIntervalCounter = this._settings.getBreakInterval();
                 }
                 this.text.set_text(`${this._timerState.breakIntervalCounter} m`);
-
-                // return GLib.SOURCE_CONTINUE;
             }
 
             this._timerState.remainingSeconds =
@@ -207,9 +231,55 @@ class TimerState {
     }
 
     /**
+     * Increments the timer in one second.
+     *
+     * @returns {void}
+     */
+    incrementOneSecond() {
+        if (this._isStopped == false) {
+            this.elapsedSeconds += 1;
+        }
+    }
+
+    /**
+     * Whether a minute has passed.
+     *
+     * @returns {boolean}
+     */
+    aMinuteHasPassed() {
+        return this.elapsedSeconds % 60 == 0;
+    }
+
+    /**
+     * Stops the timer.
+     */
+    stop() {
+        this._isStopped = true;
+    }
+
+    /**
+     * Whether the timer is stopped.
+     *
+     * @returns {boolean}
+     */
+    isStopped() {
+        return this._isStopped;
+    }
+
+    /**
+     * Resume the timer.
+     */
+    resume() {
+        this._isStopped = false;
+    }
+
+    /**
+     * Resets the timer.
+     *
      * @return {void}
      */
     reset() {
+        this._isStopped = false;
         this.elapsedSeconds = 0;
         this.remainingSeconds = null;
         this.breakIntervalCounter = this._breakInterval;
