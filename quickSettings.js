@@ -18,7 +18,7 @@ class FeatureToggle extends QuickSettings.QuickToggle {
         this._appSettings = appSettings;
 
         super._init({
-            label: 'Healthy eyes',
+            label: 'Eye care',
             iconName: 'selection-mode-symbolic',
             toggleMode: true,
         });
@@ -35,7 +35,7 @@ const FeatureMenuToggle = GObject.registerClass(
 class FeatureMenuToggle extends QuickSettings.QuickMenuToggle {
     _init() {
         super._init({
-            label: 'Healthy eyes',
+            label: 'Eye Care',
             iconName: 'face-smile-symbolic',
             toggleMode: true,
         });
@@ -45,7 +45,7 @@ class FeatureMenuToggle extends QuickSettings.QuickMenuToggle {
         // consistency with other menus.
         this.menu.setHeader(
             'face-smile-symbolic',
-            'Healthy eyes',
+            'Eye Care',
             'Take care of your eyes'
         );
 

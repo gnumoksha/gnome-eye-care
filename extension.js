@@ -1,5 +1,5 @@
 /*
- * Healthy eyes
+ * Gnome Eye Care
  * Copyright (C) 2022, 2023 me@tobias.ws
  *
  * This program is free software: you can redistribute it and/or modify
