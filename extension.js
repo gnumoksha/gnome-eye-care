@@ -22,10 +22,11 @@
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 
-const St = imports.gi.St;
+const Clutter = imports.gi.Clutter;
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
+const St = imports.gi.St;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
@@ -89,6 +90,8 @@ class Extension {
         this._indicator.destroy();
         this._indicator = null;
 
+        this._myQuickSettings.destroy();
+
         if (this._mainEventId > 0) {
             GLib.Source.remove(this._mainEventId);
         }
@@ -109,6 +112,8 @@ class Extension {
         // add text label for the countdown
         this.text = new St.Label({
             text: "loading...",
+            y_align: Clutter.ActorAlign.CENTER,
+            style_class: 'indicator-text'
         });
         this._indicator.add_actor(this.text);
 
