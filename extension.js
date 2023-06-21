@@ -133,6 +133,10 @@ class Extension {
         this._indicator.menu.addMenuItem(resetMenuItem);
         resetMenuItem.actor.connect("button_press_event", this._onResetButtonPress.bind(this));
 
+        let runNowMenuItem = new PopupMenu.PopupMenuItem("Run now");
+        this._indicator.menu.addMenuItem(runNowMenuItem);
+        runNowMenuItem.actor.connect("button_press_event", this._onRunNowButtonPress.bind(this));
+
         // `Main.panel` is the actual panel you see at the top of the screen,
         // not a class constructor.
         Main.panel.addToStatusArea(indicatorName, this._indicator);
@@ -161,9 +165,25 @@ class Extension {
      * Executed when the user press the "Reset" button.
      */
     _onResetButtonPress(actor, event) {
+        this._reset();
+        this._indicator.menu.close();
+    }
+
+    /**
+     * Executed when the user press the "Run now" button.
+     */
+    _onRunNowButtonPress(actor, event) {
+        this._showNotificationDialog();
+        this._reset();
+        this._indicator.menu.close();
+    }
+
+    /**
+     * Reset the timer state and the timer label.
+     */
+    _reset() {
         this._timerState.reset();
         this.text.set_text(`${this._settings.getBreakInterval()} m`);
-        this._indicator.menu.close();
     }
 
     /**
@@ -209,11 +229,6 @@ class Extension {
     }
 
     _showNotificationDialog() {
-        /**
-        dialogLayout,
-        contentLayout,
-        buttonLayout,
-        */
         let dialog = new Dialog.TakeBreakDialog(this._settings.getBreakTimeout());
         dialog.connect("closed", this._onDialogClosed.bind(this));
         dialog.open();
