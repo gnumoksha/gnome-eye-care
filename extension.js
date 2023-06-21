@@ -34,6 +34,7 @@ const Notifier = Me.imports.notifier;
 const Dialog = Me.imports.dialog;
 const Settings = Me.imports.settings;
 const MyQuickSettings = Me.imports.quickSettings;
+const TimerState = Me.imports.timerState;
 
 class Extension {
     constructor() {
@@ -41,7 +42,7 @@ class Extension {
          * Holds the instance of the panel indicator.
          * @type {object}
          */
-        this._indicator = null;
+        this._panelMenuIndicator = null;
 
         /**
          * The event id for the main loop of this extension.
@@ -65,15 +66,19 @@ class Extension {
 
         this._createMenuIndicator();
 
-        this._timerState = new TimerState(this._settings.getBreakInterval());
+        this._timerState = new TimerState.TimerState(
+            this._settings.getBreakInterval()
+        );
         this._setupTimer();
 
-        this.text.set_text(`${this._settings.getBreakInterval()} m`);
+        this.timerLabel.set_text(`${this._settings.getBreakInterval()} m`);
 
         this._notifier = new Notifier.Notifier();
         this._notifier.setup();
 
-        this._myQuickSettings = new MyQuickSettings.MyQuickSettings(this._settings);
+        this._myQuickSettings = new MyQuickSettings.MyQuickSettings(
+            this._settings
+        );
 
         log(`The extension ${Me.metadata.name} was enabled`);
     }
@@ -87,8 +92,8 @@ class Extension {
     disable() {
         log(`disabling ${Me.metadata.name}`);
 
-        this._indicator.destroy();
-        this._indicator = null;
+        this._panelMenuIndicator.destroy();
+        this._panelMenuIndicator = null;
 
         this._myQuickSettings.destroy();
 
@@ -106,16 +111,14 @@ class Extension {
     _createMenuIndicator() {
         let indicatorName = `${Me.metadata.name} Indicator`;
 
-        // Create a panel button
-        this._indicator = new PanelMenu.Button(0.0, indicatorName, false);
+        this._panelMenuIndicator = new PanelMenu.Button(0.0, indicatorName, false);
 
-        // add text label for the countdown
-        this.text = new St.Label({
+        this.timerLabel = new St.Label({
             text: "loading...",
             y_align: Clutter.ActorAlign.CENTER,
             style_class: 'indicator-text'
         });
-        this._indicator.add_actor(this.text);
+        this._panelMenuIndicator.add_actor(this.timerLabel);
 
         // Bind our indicator visibility to the GSettings value
         //
@@ -123,23 +126,37 @@ class Extension {
         // registered on a GObject class), not native JavaScript properties
         this._settings
             .getUserSettings()
-            .bind(Settings.KEY_SHOW_INDICATOR, this._indicator, "visible", Gio.SettingsBindFlags.DEFAULT);
+            .bind(
+                Settings.KEY_SHOW_INDICATOR,
+                this._panelMenuIndicator,
+                "visible",
+                Gio.SettingsBindFlags.DEFAULT
+            );
 
         let pauseMenuItem = new PopupMenu.PopupMenuItem("Stop / Resume");
-        this._indicator.menu.addMenuItem(pauseMenuItem);
-        pauseMenuItem.actor.connect("button_press_event", this._onStopButtonPress.bind(this));
+        this._panelMenuIndicator.menu.addMenuItem(pauseMenuItem);
+        pauseMenuItem.actor.connect(
+            "button_press_event",
+            this._onStopButtonPress.bind(this)
+        );
 
         let resetMenuItem = new PopupMenu.PopupMenuItem("Reset");
-        this._indicator.menu.addMenuItem(resetMenuItem);
-        resetMenuItem.actor.connect("button_press_event", this._onResetButtonPress.bind(this));
+        this._panelMenuIndicator.menu.addMenuItem(resetMenuItem);
+        resetMenuItem.actor.connect(
+            "button_press_event",
+            this._onResetButtonPress.bind(this)
+        );
 
         let runNowMenuItem = new PopupMenu.PopupMenuItem("Run now");
-        this._indicator.menu.addMenuItem(runNowMenuItem);
-        runNowMenuItem.actor.connect("button_press_event", this._onRunNowButtonPress.bind(this));
+        this._panelMenuIndicator.menu.addMenuItem(runNowMenuItem);
+        runNowMenuItem.actor.connect(
+            "button_press_event",
+            this._onRunNowButtonPress.bind(this)
+        );
 
         // `Main.panel` is the actual panel you see at the top of the screen,
         // not a class constructor.
-        Main.panel.addToStatusArea(indicatorName, this._indicator);
+        Main.panel.addToStatusArea(indicatorName, this._panelMenuIndicator);
     }
 
     /**
@@ -151,14 +168,14 @@ class Extension {
     _onStopButtonPress(actor, event) {
         if (this._timerState.isStopped()) {
             this._timerState.resume();
-            this.text.set_text(`${this._timerState.breakIntervalCounter} m`);
+            this.timerLabel.set_text(`${this._timerState.breakIntervalCounter} m`);
             actor.label = "Stop"; // #FIXME don't work log(Object.getOwnPropertyNames(actor));
         } else {
             this._timerState.stop();
-            this.text.set_text(`${this._timerState.breakIntervalCounter} m ⏹️`);
+            this.timerLabel.set_text(`${this._timerState.breakIntervalCounter} m ⏹️`);
             actor.label = "Resume"; // #FIXME don't work
         }
-        this._indicator.menu.close();
+        this._panelMenuIndicator.menu.close();
     }
 
     /**
@@ -166,7 +183,7 @@ class Extension {
      */
     _onResetButtonPress(actor, event) {
         this._reset();
-        this._indicator.menu.close();
+        this._panelMenuIndicator.menu.close();
     }
 
     /**
@@ -175,7 +192,7 @@ class Extension {
     _onRunNowButtonPress(actor, event) {
         this._showNotificationDialog();
         this._reset();
-        this._indicator.menu.close();
+        this._panelMenuIndicator.menu.close();
     }
 
     /**
@@ -183,7 +200,7 @@ class Extension {
      */
     _reset() {
         this._timerState.reset();
-        this.text.set_text(`${this._settings.getBreakInterval()} m`);
+        this.timerLabel.set_text(`${this._settings.getBreakInterval()} m`);
     }
 
     /**
@@ -202,7 +219,7 @@ class Extension {
                 if (this._timerState.breakIntervalCounter <= 0) {
                     this._timerState.breakIntervalCounter = this._settings.getBreakInterval();
                 }
-                this.text.set_text(`${this._timerState.breakIntervalCounter} m`);
+                this.timerLabel.set_text(`${this._timerState.breakIntervalCounter} m`);
             }
 
             this._timerState.remainingSeconds =
@@ -238,71 +255,6 @@ class Extension {
         // the dialog will run for >= 20 seconds so, we need to restart the
         // timer in order to not count the time the dialog is open
         this._timerState.reset();
-    }
-}
-
-class TimerState {
-    /**
-     * @param {number} breakInterval
-     */
-    constructor(breakInterval) {
-        this._breakInterval = breakInterval;
-        this.reset();
-    }
-
-    /**
-     * Increments the timer in one second.
-     *
-     * @returns {void}
-     */
-    incrementOneSecond() {
-        if (this._isStopped == false) {
-            this.elapsedSeconds += 1;
-        }
-    }
-
-    /**
-     * Whether a minute has passed.
-     *
-     * @returns {boolean}
-     */
-    aMinuteHasPassed() {
-        return this.elapsedSeconds % 60 == 0;
-    }
-
-    /**
-     * Stops the timer.
-     */
-    stop() {
-        this._isStopped = true;
-    }
-
-    /**
-     * Whether the timer is stopped.
-     *
-     * @returns {boolean}
-     */
-    isStopped() {
-        return this._isStopped;
-    }
-
-    /**
-     * Resume the timer.
-     */
-    resume() {
-        this._isStopped = false;
-    }
-
-    /**
-     * Resets the timer.
-     *
-     * @return {void}
-     */
-    reset() {
-        this._isStopped = false;
-        this.elapsedSeconds = 0;
-        this.remainingSeconds = null;
-        this.breakIntervalCounter = this._breakInterval;
     }
 }
 
