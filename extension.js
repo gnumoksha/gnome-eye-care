@@ -1,6 +1,6 @@
 /*
  * Gnome Eye Care
- * Copyright (C) 2022, 2023 me@tobias.ws
+ * Copyright (C) 2022, 2023, 2024 me@tobias.ws
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,25 +19,37 @@
  */
 "use strict";
 
-const GLib = imports.gi.GLib;
-const Gio = imports.gi.Gio;
+import GLib from "gi://GLib";
+import Gio from "gi://Gio";
+import Clutter from "gi://Clutter";
+import St from "gi://St";
 
-const Clutter = imports.gi.Clutter;
-const Main = imports.ui.main;
-const PanelMenu = imports.ui.panelMenu;
-const PopupMenu = imports.ui.popupMenu;
-const St = imports.gi.St;
+import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
+import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
+import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const Notifier = Me.imports.notifier;
-const Dialog = Me.imports.dialog;
-const Settings = Me.imports.settings;
-const MyQuickSettings = Me.imports.quickSettings;
-const TimerState = Me.imports.timerState;
+import * as Notifier from "./notifier.js";
+import * as Dialog from "./dialog.js";
+import { ExtensionSettings, KEY_SHOW_INDICATOR } from "./settings.js";
+import * as MyQuickSettings from "./quickSettings.js";
+import * as TimerState from "./timerState.js";
 
-class Extension {
-    constructor() {
+export default class EyeCareExtension extends Extension {
+    /**
+     * This class is constructed once when your extension is loaded, not
+     * enabled. This is a good time to setup translations or anything else you
+     * only do once.
+     *
+     * You MUST NOT make any changes to GNOME Shell, connect any signals or add
+     * any event sources here.
+     *
+     * @param {ExtensionMeta} metadata - An extension meta object https://gjs.guide/extensions/topics/extension.html
+     */
+    constructor(metadata) {
+        super(metadata);
+        console.debug(`constructing ${this.metadata.name}`);
+
         /**
          * Holds the instance of the panel indicator.
          * @type {object}
@@ -57,51 +69,58 @@ class Extension {
     }
 
     /**
-     * Special method invoked when the extension has been enabled.
+     * This function is called when your extension is enabled, which could be
+     * done in GNOME Extensions, when you log in or when the screen is unlocked.
+     *
+     * This is when you should setup any UI for your extension, change existing
+     * widgets, connect signals or modify GNOME Shell's behavior.
      */
     enable() {
-        log(`Enabling the extension ${Me.metadata.name}`);
+        console.debug(`Enabling the extension ${this.metadata.name}`);
 
-        this._settings = new Settings.ExtensionSettings();
+        this._settings = new ExtensionSettings(this);
 
         this._createMenuIndicator();
 
-        this._timerState = new TimerState.TimerState(
-            this._settings.getBreakInterval()
-        );
+        this._timerState = new TimerState.TimerState(this._settings.getBreakInterval());
         this._setupTimer();
 
         this.timerLabel.set_text(`${this._settings.getBreakInterval()} m`);
 
         this._notifier = new Notifier.Notifier();
-        this._notifier.setup();
 
-        this._myQuickSettings = new MyQuickSettings.MyQuickSettings(
-            this._settings
-        );
+        // The quick settings indicator is not necessary yet
+        // this._quickSettingsIndicator = new MyQuickSettings.EyeCareIndicator(this._settings);
+        // this._quickSettingsIndicator.quickSettingsItems.push(
+        //     new MyQuickSettings.EyeCareToggle(this._settings)
+        // );
+        // Main.panel.statusArea.quickSettings.addExternalIndicator(this._quickSettingsIndicator);
 
-        log(`The extension ${Me.metadata.name} was enabled`);
+        console.debug(`The extension ${this.metadata.name} was enabled`);
     }
 
     /**
-     * Special method invoked when the extension has been disabled.
+     * This function is called when your extension is uninstalled, disabled in
+     * GNOME Extensions or when the screen locks.
      *
-     * REMINDER: It's required for extensions to clean up after themselves when
-     * they are disabled. This is required for approval during review!
+     * Anything you created, modified or setup in enable() MUST be undone here.
      */
     disable() {
-        log(`disabling ${Me.metadata.name}`);
+        console.debug(`disabling ${this.metadata.name}`);
 
         this._panelMenuIndicator.destroy();
         this._panelMenuIndicator = null;
 
-        this._myQuickSettings.destroy();
+        // The quick settings indicator is not necessary yet
+        // this._quickSettingsIndicator.quickSettingsItems.forEach((item) => item.destroy());
+        // this._quickSettingsIndicator.destroy();
+        // this._quickSettingsIndicator = null;
 
         if (this._mainEventId > 0) {
             GLib.Source.remove(this._mainEventId);
         }
 
-        log(`${Me.metadata.name} was disabled`);
+        console.debug(`${this.metadata.name} was disabled`);
     }
 
     /**
@@ -109,16 +128,16 @@ class Extension {
      * on-screen display (OSD)
      */
     _createMenuIndicator() {
-        let indicatorName = `${Me.metadata.name} Indicator`;
+        const indicatorName = `${this.metadata.name} Indicator`;
 
         this._panelMenuIndicator = new PanelMenu.Button(0.0, indicatorName, false);
 
         this.timerLabel = new St.Label({
             text: "loading...",
             y_align: Clutter.ActorAlign.CENTER,
-            style_class: 'indicator-text'
+            style_class: "indicator-text",
         });
-        this._panelMenuIndicator.add_actor(this.timerLabel);
+        this._panelMenuIndicator.add_child(this.timerLabel);
 
         // Bind our indicator visibility to the GSettings value
         //
@@ -127,32 +146,28 @@ class Extension {
         this._settings
             .getUserSettings()
             .bind(
-                Settings.KEY_SHOW_INDICATOR,
+                KEY_SHOW_INDICATOR,
                 this._panelMenuIndicator,
                 "visible",
                 Gio.SettingsBindFlags.DEFAULT
             );
 
-        let pauseMenuItem = new PopupMenu.PopupMenuItem("Stop / Resume");
+        /**
+         * Add menu items.
+         * References:
+         *  - https://gjs.guide/extensions/topics/popup-menu.html
+         */
+        const pauseMenuItem = new PopupMenu.PopupMenuItem("Stop / Resume");
         this._panelMenuIndicator.menu.addMenuItem(pauseMenuItem);
-        pauseMenuItem.actor.connect(
-            "button_press_event",
-            this._onStopButtonPress.bind(this)
-        );
-
-        let resetMenuItem = new PopupMenu.PopupMenuItem("Reset");
+        pauseMenuItem.connect("activate", this._onStopButtonPress.bind(this));
+        //
+        const resetMenuItem = new PopupMenu.PopupMenuItem("Reset");
         this._panelMenuIndicator.menu.addMenuItem(resetMenuItem);
-        resetMenuItem.actor.connect(
-            "button_press_event",
-            this._onResetButtonPress.bind(this)
-        );
-
-        let runNowMenuItem = new PopupMenu.PopupMenuItem("Run now");
+        resetMenuItem.connect("activate", this._onResetButtonPress.bind(this));
+        //
+        const runNowMenuItem = new PopupMenu.PopupMenuItem("Run now");
         this._panelMenuIndicator.menu.addMenuItem(runNowMenuItem);
-        runNowMenuItem.actor.connect(
-            "button_press_event",
-            this._onRunNowButtonPress.bind(this)
-        );
+        runNowMenuItem.connect("activate", this._onRunNowButtonPress.bind(this));
 
         // `Main.panel` is the actual panel you see at the top of the screen,
         // not a class constructor.
@@ -253,23 +268,7 @@ class Extension {
 
     _onDialogClosed() {
         // the dialog will run for >= 20 seconds so, we need to restart the
-        // timer in order to not count the time the dialog is open
+        // timer in order to not count the time the dialog was open
         this._timerState.reset();
     }
-}
-
-/**
- * This function is called once when your extension is loaded, not enabled. This
- * is a good time to setup translations or anything else you only do once.
- *
- * You MUST NOT make any changes to GNOME Shell, connect any signals or add any
- * MainLoop sources here.
- *
- * @param {ExtensionMeta} meta - An extension meta object, described below.
- * @returns {Object} an object with enable() and disable() methods
- */
-function init(meta) {
-    log(`Initializing ${meta.metadata.name}`);
-
-    return new Extension();
 }

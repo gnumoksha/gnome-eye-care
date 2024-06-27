@@ -1,6 +1,6 @@
 /*
  * Gnome Eye Care
- * Copyright (C) 2022  me@tobias.ws
+ * Copyright (C) 2022, 2023, 2024  me@tobias.ws
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,44 +17,53 @@
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-'use strict';
+"use strict";
 
-const MessageTray = imports.ui.messageTray;
+import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import * as MessageTray from "resource:///org/gnome/shell/ui/messageTray.js";
 
-var Notifier = class Notifier
-{
-    constructor() {
-        /**
-         * Holds the instance of message tray.
-         * @type {object}
-         */
-        this._messageTray = null;
+let notificationSource = null;
+
+/**
+ * References:
+ *  - https://gjs.guide/extensions/topics/notifications.html
+ */
+function getNotificationSource() {
+    if (!notificationSource) {
+        const notificationPolicy = new MessageTray.NotificationGenericPolicy();
+
+        notificationSource = new MessageTray.Source({
+            title: _("Gnome Eye Care"),
+            iconName: "face-smile-symbolic",
+            policy: notificationPolicy,
+        });
+
+        // Reset the notification source if it's destroyed
+        notificationSource.connect("destroy", (_source) => {
+            notificationSource = null;
+        });
+        Main.messageTray.add(notificationSource);
     }
 
-    /**
-     * Set up the objects needed for system tray notifications.
-     */
-    setup() {
-        this._messageTray = new MessageTray.MessageTray();
+    return notificationSource;
+}
 
-        const source = new MessageTray.SystemNotificationSource();
-        this._messageTray.add(source);
-    }
-
+export const Notifier = class Notifier {
     /**
      * Shows a transient notification that will last 4 seconds.
      *
-     * @param {string} title: A title
-     * @param {string} banner: A message
+     * @param {string} title: The title
+     * @param {string} body: The message
      */
-    notify(title, banner) {
-        let source = new MessageTray.SystemNotificationSource();
-        this._messageTray.add(source);
+    notify(title, body) {
+        const source = getNotificationSource();
 
-        let notification = new MessageTray.Notification(source, title, banner);
-        notification.setTransient(true);
-        notification.setUrgency(MessageTray.Urgency.NORMAL);
+        const notification = new MessageTray.Notification({
+            source: source,
+            title: title,
+            body: body,
+        });
 
-        source.showNotification(notification);
+        source.addNotification(notification);
     }
-}
+};

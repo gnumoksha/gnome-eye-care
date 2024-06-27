@@ -1,6 +1,6 @@
 /*
  * Gnome Eye Care
- * Copyright (C) 2022, 2023 me@tobias.ws
+ * Copyright (C) 2022, 2023, 2024 me@tobias.ws
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  */
 "use strict";
 
-var TimerState = class TimerState {
+export const TimerState = class TimerState {
     /**
      * @param {number} breakInterval
      */
@@ -82,4 +82,4 @@ var TimerState = class TimerState {
         this.remainingSeconds = null;
         this.breakIntervalCounter = this._breakInterval;
     }
-}
+};

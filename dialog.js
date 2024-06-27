@@ -1,6 +1,6 @@
 /*
  * Gnome Eye Care
- * Copyright (C) 2022  me@tobias.ws
+ * Copyright (C) 2022, 2023, 2024  me@tobias.ws
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,15 +17,17 @@
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-'use strict';
+"use strict";
 
-const { Clutter, GObject, St } = imports.gi;
-const GLib = imports.gi.GLib;
+import Clutter from "gi://Clutter";
+import St from "gi://St";
+import GLib from "gi://GLib";
+import GObject from "gi://GObject";
 
-const ModalDialog = imports.ui.modalDialog;
-const Dialog = imports.ui.dialog;
+import * as ModalDialog from "resource:///org/gnome/shell/ui/modalDialog.js";
+import * as Dialog from "resource:///org/gnome/shell/ui/dialog.js";
 
-var TakeBreakDialog = GObject.registerClass(
+export const TakeBreakDialog = GObject.registerClass(
     class TakeBreakDialog extends ModalDialog.ModalDialog {
         _init(interval) {
             super._init({
