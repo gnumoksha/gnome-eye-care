@@ -19,136 +19,157 @@
  */
 "use strict";
 
-const { Adw, Gio, Gtk } = imports.gi;
+import Gio from "gi://Gio";
+import Gtk from "gi://Gtk?version=4.0";
+import Adw from "gi://Adw";
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const Settings = Me.imports.settings;
+import {
+    ExtensionPreferences,
+    gettext as _,
+} from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
+
+import {
+    KEY_SHOW_INDICATOR,
+    KEY_SHOW_NOTIFICATION,
+    KEY_NOTIFY_BEFORE,
+    KEY_BREAK_TIMEOUT,
+} from "./settings.js";
 
 /**
- * Like `extension.js` this is used for any one-time setup like translations.
- *
- * @param {ExtensionMeta} meta - An extension meta object, described below.
+ * References:
+ *  - https://gjs.guide/extensions/overview/anatomy.html#prefs-js
  */
-function init(meta) {
-    if (meta.metadata) {
-        log(`initializing ${meta.metadata.name} Preferences`);
+export default class ExamplePreferences extends ExtensionPreferences {
+    /**
+     * This class is constructed once when your extension preferences are
+     * about to be opened. This is a good time to setup translations or anything
+     * else you only do once.
+     *
+     * @param {ExtensionMeta} metadata - An extension meta object
+     */
+    constructor(metadata) {
+        super(metadata);
+
+        console.debug(`constructing ${this.metadata.name}`);
     }
-}
 
-function fillPreferencesWindow(window) {
-    // Use the same GSettings schema as in `extension.js`
-    const settings = ExtensionUtils.getSettings(
-        "org.gnome.shell.extensions.healthy-eyes"
-    );
+    /**
+     * This function is called when the preferences window is first created to
+     * build and return a GTK4 widget.
+     *
+     * The preferences window will be a `Adw.PreferencesWindow`, and the widget
+     * returned by this function will be added to an `Adw.PreferencesPage` or
+     * `Adw.PreferencesGroup` if necessary.
+     *
+     * @returns {Gtk.Widget} the preferences widget
+     */
+    getPreferencesWidget() {
+        return new Gtk.Label({
+            label: this.metadata.name,
+        });
+    }
 
-    // Create a preferences page and group
-    const page = new Adw.PreferencesPage();
-    const group = new Adw.PreferencesGroup();
-    page.add(group);
+    /**
+     * Fill the preferences window with preferences.
+     *
+     * If this method is overridden, `getPreferencesWidget()` will NOT be called.
+     *
+     * @param {Adw.PreferencesWindow} window - the preferences window
+     */
+    fillPreferencesWindow(window) {
+        // Use the same GSettings schema as in `extension.js`
+        const settings = this.getSettings("org.gnome.shell.extensions.healthy-eyes");
 
-    firstRow(group, settings);
-    secondRow(group, settings);
-    thirdRow(group, settings);
-    fourthRow(group, settings);
+        // Create a preferences page and group
+        const page = new Adw.PreferencesPage();
+        const group = new Adw.PreferencesGroup();
+        page.add(group);
 
-    // Add our page to the window
-    window.add(page);
-}
+        this.firstRow(group, settings);
+        this.secondRow(group, settings);
+        this.thirdRow(group, settings);
+        this.fourthRow(group, settings);
 
-function firstRow(group, settings) {
-    // Create a new preferences row
-    const row = new Adw.ActionRow({
-        title: "Show extension indicator",
-        subtitle: "Whether to show the indicator on the panel menu"
-    });
-    group.add(row);
+        // Add our page to the window
+        window.add(page);
+    }
 
-    // Create the switch and bind its value to the `show-indicator` key
-    const toggle = new Gtk.Switch({
-        active: settings.get_boolean(Settings.KEY_SHOW_INDICATOR),
-        valign: Gtk.Align.CENTER,
-    });
-    settings.bind(
-        Settings.KEY_SHOW_INDICATOR,
-        toggle,
-        "active",
-        Gio.SettingsBindFlags.DEFAULT
-    );
+    firstRow(group, settings) {
+        // Create a new preferences row
+        const row = new Adw.ActionRow({
+            title: "Show extension indicator",
+            subtitle: "Whether to show the indicator on the panel menu",
+        });
+        group.add(row);
 
-    // Add the switch to the row
-    row.add_suffix(toggle);
-    row.activatable_widget = toggle;
-}
+        // Create the switch and bind its value to the `show-indicator` key
+        const toggle = new Gtk.Switch({
+            active: settings.get_boolean(KEY_SHOW_INDICATOR),
+            valign: Gtk.Align.CENTER,
+        });
+        settings.bind(KEY_SHOW_INDICATOR, toggle, "active", Gio.SettingsBindFlags.DEFAULT);
 
-function secondRow(group, settings) {
-    const row = new Adw.ActionRow({
-        title: "Show notification",
-        subtitle: "Whether to show a desktop notification when the time to take a break is approaching"
-    });
-    group.add(row);
+        // Add the switch to the row
+        row.add_suffix(toggle);
+        row.activatable_widget = toggle;
+    }
 
-    const toggle = new Gtk.Switch({
-        active: settings.get_boolean(Settings.KEY_SHOW_NOTIFICATION),
-        valign: Gtk.Align.CENTER,
-    });
-    settings.bind(
-        Settings.KEY_SHOW_NOTIFICATION,
-        toggle,
-        "active",
-        Gio.SettingsBindFlags.DEFAULT
-    );
+    secondRow(group, settings) {
+        const row = new Adw.ActionRow({
+            title: "Show notification",
+            subtitle:
+                "Whether to show a desktop notification when the time to take a break is approaching",
+        });
+        group.add(row);
 
-    row.add_suffix(toggle);
-    row.activatable_widget = toggle;
-}
+        const toggle = new Gtk.Switch({
+            active: settings.get_boolean(KEY_SHOW_NOTIFICATION),
+            valign: Gtk.Align.CENTER,
+        });
+        settings.bind(KEY_SHOW_NOTIFICATION, toggle, "active", Gio.SettingsBindFlags.DEFAULT);
 
-function thirdRow(group, settings) {
-    const row = new Adw.ActionRow({
-        title: "Notification interval",
-        subtitle: "Show the desktop notification this amount of seconds before the \"take a break\" dialog"
-    });
-    group.add(row);
+        row.add_suffix(toggle);
+        row.activatable_widget = toggle;
+    }
 
-    const spinButton = new Gtk.SpinButton();
-    spinButton.set_range(5, 60);
-    spinButton.set_numeric(true);
-    spinButton.set_increments(1, 5);
-    spinButton.set_snap_to_ticks(true);
-    spinButton.set_value(settings.get_int(Settings.KEY_NOTIFY_BEFORE));
+    thirdRow(group, settings) {
+        const row = new Adw.ActionRow({
+            title: "Notification interval",
+            subtitle:
+                'Show the desktop notification this amount of seconds before the "take a break" dialog',
+        });
+        group.add(row);
 
-    settings.bind(
-        Settings.KEY_NOTIFY_BEFORE,
-        spinButton,
-        "value",
-        Gio.SettingsBindFlags.DEFAULT
-    );
+        const spinButton = new Gtk.SpinButton();
+        spinButton.set_range(5, 60);
+        spinButton.set_numeric(true);
+        spinButton.set_increments(1, 5);
+        spinButton.set_snap_to_ticks(true);
+        spinButton.set_value(settings.get_int(KEY_NOTIFY_BEFORE));
 
-    row.add_suffix(spinButton);
-    row.activatable_widget = spinButton;
-}
+        settings.bind(KEY_NOTIFY_BEFORE, spinButton, "value", Gio.SettingsBindFlags.DEFAULT);
 
-function fourthRow(group, settings) {
-    const row = new Adw.ActionRow({
-        title: "Break timeout",
-        subtitle: "Timeout for the \"take a break\" dialog, in minutes"
-    });
-    group.add(row);
+        row.add_suffix(spinButton);
+        row.activatable_widget = spinButton;
+    }
 
-    const spinButton = new Gtk.SpinButton();
-    spinButton.set_range(20, 60);
-    spinButton.set_numeric(true);
-    spinButton.set_increments(1, 5);
-    spinButton.set_snap_to_ticks(true);
-    spinButton.set_value(settings.get_int(Settings.KEY_BREAK_TIMEOUT));
+    fourthRow(group, settings) {
+        const row = new Adw.ActionRow({
+            title: "Break timeout",
+            subtitle: 'Timeout for the "take a break" dialog, in minutes',
+        });
+        group.add(row);
 
-    settings.bind(
-        Settings.KEY_BREAK_TIMEOUT,
-        spinButton,
-        "value",
-        Gio.SettingsBindFlags.DEFAULT
-    );
+        const spinButton = new Gtk.SpinButton();
+        spinButton.set_range(20, 60);
+        spinButton.set_numeric(true);
+        spinButton.set_increments(1, 5);
+        spinButton.set_snap_to_ticks(true);
+        spinButton.set_value(settings.get_int(KEY_BREAK_TIMEOUT));
 
-    row.add_suffix(spinButton);
-    row.activatable_widget = spinButton;
+        settings.bind(KEY_BREAK_TIMEOUT, spinButton, "value", Gio.SettingsBindFlags.DEFAULT);
+
+        row.add_suffix(spinButton);
+        row.activatable_widget = spinButton;
+    }
 }

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- to compile, run `glib-compile-schemas schemas/` in the root directory -->
 <schemalist>
   <schema id="org.gnome.shell.extensions.healthy-eyes" path="/org/gnome/shell/extensions/healthy-eyes/">
     <key name="show-indicator" type="b">

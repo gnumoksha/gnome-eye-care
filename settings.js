@@ -1,15 +1,47 @@
-const ExtensionUtils = imports.misc.extensionUtils;
+/*
+ * Gnome Eye Care
+ * Copyright (C) 2022, 2023, 2024 me@tobias.ws
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 
-var KEY_SHOW_INDICATOR = 'show-indicator';
-var KEY_SHOW_NOTIFICATION = 'show-notification';
-var KEY_NOTIFY_BEFORE = 'notify-before';
-var KEY_BREAK_TIMEOUT = 'break-timeout';
+// If we import this, then prefs.js will not work because there the resource
+// paths start with resource:///org/gnome/Shell/Extensions/js/
+//import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
+
+export const KEY_ENABLED = "enabled"; // unused. Must be added into the schema
+export const KEY_SHOW_INDICATOR = "show-indicator";
+export const KEY_SHOW_NOTIFICATION = "show-notification";
+export const KEY_NOTIFY_BEFORE = "notify-before";
+export const KEY_BREAK_TIMEOUT = "break-timeout";
 
 /**
  * Wrap around the extension's user settings and static settings.
  */
-var ExtensionSettings = class ExtensionSettings {
-    constructor() {
+export class ExtensionSettings {
+    /**
+     *
+     * @param {Extension} extensionObject
+     */
+    constructor(extensionObject) {
+        /**
+         * @type {Extension}
+         */
+        this._extension = extensionObject;
+
         /**
          * The "take a break" dialog will be shown after this amount of minutes.
          * @type {number}
@@ -31,7 +63,7 @@ var ExtensionSettings = class ExtensionSettings {
      */
     getUserSettings() {
         if (this._extensionSettings == null) {
-            this._extensionSettings = ExtensionUtils.getSettings(
+            this._extensionSettings = this._extension.getSettings(
                 "org.gnome.shell.extensions.healthy-eyes"
             );
         }
@@ -43,14 +75,14 @@ var ExtensionSettings = class ExtensionSettings {
      * @return {bool}
      */
     canShowNotification() {
-        return this.getUserSettings().get_boolean("show-notification");
+        return this.getUserSettings().get_boolean(KEY_SHOW_NOTIFICATION);
     }
 
     /**
      * @return {number}
      */
     getNotificationBefore() {
-        return this.getUserSettings().get_int("notify-before");
+        return this.getUserSettings().get_int(KEY_NOTIFY_BEFORE);
     }
 
     /**
@@ -71,6 +103,6 @@ var ExtensionSettings = class ExtensionSettings {
      * @return {number}
      */
     getBreakTimeout() {
-        return this.getUserSettings().get_int("break-timeout");
+        return this.getUserSettings().get_int(KEY_BREAK_TIMEOUT);
     }
 }

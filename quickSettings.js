@@ -1,6 +1,6 @@
 /*
  * Gnome Eye Care
- * Copyright (C) 2022, 2023 me@tobias.ws
+ * Copyright (C) 2022, 2023, 2024 me@tobias.ws
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,103 +19,58 @@
  */
 "use strict";
 
-const GLib = imports.gi.GLib;
-const Gio = imports.gi.Gio;
-const GObject = imports.gi.GObject;
+import GObject from "gi://GObject";
+import Gio from "gi://Gio";
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const Settings = Me.imports.settings;
+import * as QuickSettings from "resource:///org/gnome/shell/ui/quickSettings.js";
 
-const Main = imports.ui.main;
-const PopupMenu = imports.ui.popupMenu;
-const QuickSettings = imports.ui.quickSettings;
-// This is the live instance of the Quick Settings menu
-const QuickSettingsMenu = imports.ui.main.panel.statusArea.quickSettings;
-
-const FeatureToggle = GObject.registerClass(
-class FeatureToggle extends QuickSettings.QuickToggle {
-    _init(appSettings) {
-        this._appSettings = appSettings;
-
-        super._init({
-            title: 'Eye care',
-            iconName: 'selection-mode-symbolic',
-            toggleMode: true,
-        });
-
-        this._appSettings.getUserSettings().bind(
-            Settings.KEY_SHOW_INDICATOR,
-            this, 'checked',
-            Gio.SettingsBindFlags.DEFAULT
-        );
-    }
-});
-
-const FeatureMenuToggle = GObject.registerClass(
-class FeatureMenuToggle extends QuickSettings.QuickMenuToggle {
-    _init() {
-        super._init({
-            title: 'Eye Care',
-            iconName: 'face-smile-symbolic',
-            toggleMode: true,
-        });
-
-        // This function is unique to this class. It adds a nice header with an
-        // icon, title and optional subtitle. It's recommended you do so for
-        // consistency with other menus.
-        this.menu.setHeader(
-            'face-smile-symbolic',
-            'Eye Care',
-            'Take care of your eyes'
-        );
-
-        // You may also add sections of items to the menu
-        // this._itemsSection = new PopupMenu.PopupMenuSection();
-        // this._itemsSection.addAction('Option 1', () => log('activated'));
-        // this._itemsSection.addAction('Option 2', () => log('activated'));
-        // this.menu.addMenuItem(this._itemsSection);
-
-        // this.menu.addMenuItem(new FeatureToggle(new Settings.ExtensionSettings()));
-
-        // this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        // Add an entry-point for more settings
-        const settingsItem = this.menu.addAction(
-            'More Settings',
-            () => ExtensionUtils.openPrefs()
-        );
-
-        // Ensure the settings are unavailable when the screen is locked
-        settingsItem.visible = Main.sessionMode.allowSettings;
-        this.menu._settingsActions[Me.uuid] = settingsItem;
-    }
-});
+import { ExtensionSettings, KEY_ENABLED } from "./settings.js";
 
 /**
- * Wrap around the extension's user settings and static settings.
+ * A quick settings indicator that shows whether the extension is running.
+ *
+ * References:
+ *  - https://gjs.guide/extensions/topics/quick-settings.html
  */
-var MyQuickSettings = GObject.registerClass(
-    class MyQuickSettings extends QuickSettings.SystemIndicator {
-        _init(appSettings) {
+export const EyeCareIndicator = GObject.registerClass(
+    class EyeCareIndicator extends QuickSettings.SystemIndicator {
+        /**
+         * @param {ExtensionSettings} settings
+         */
+        _init(settings) {
             super._init();
-            this._appSettings = appSettings;
 
-            // Create the icon for the indicator
             this._indicator = this._addIndicator();
-            this._indicator.icon_name = 'selection-mode-symbolic';
+            this._indicator.icon_name = "face-smile-symbolic";
 
-            // Create the toggle menu and associate it with the indicator, being
-            // sure to destroy it along with the indicator
-            this.quickSettingsItems.push(new FeatureMenuToggle());
+            // Showing an indicator when the feature is enabled
+            settings
+                .getUserSettings()
+                .bind(KEY_ENABLED, this._indicator, "visible", Gio.SettingsBindFlags.DEFAULT);
+        }
+    }
+);
 
-            this.connect('destroy', () => {
-                this.quickSettingsItems.forEach(item => item.destroy());
+/**
+ * Enable/disable the extension from the quick settings.
+ */
+export const EyeCareToggle = GObject.registerClass(
+    class ExampleToggle extends QuickSettings.QuickToggle {
+        /**
+         * @param {ExtensionSettings} settings
+         */
+        _init(settings) {
+            super._init({
+                title: _("Eye Care"),
+                subtitle: _("Take care of your eyes"),
+                iconName: "face-smile-symbolic",
+                toggleMode: true,
             });
 
-            // Add the indicator to the panel and the toggle to the menu
-            QuickSettingsMenu._indicators.add_child(this);
-            QuickSettingsMenu._addItems(this.quickSettingsItems);
+            // Binding the toggle to a GSettings key
+            settings
+                .getUserSettings()
+                .bind(KEY_ENABLED, this, "checked", Gio.SettingsBindFlags.DEFAULT);
         }
     }
 );
