@@ -1,6 +1,6 @@
 /*
  * Gnome Eye Care
- * Copyright (C) 2022, 2023, 2024 me@tobias.ws
+ * Copyright (C) 2022 - 2026 Tobias me@tobias.ws
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ export class ExtensionSettings {
     getUserSettings() {
         if (this._extensionSettings == null) {
             this._extensionSettings = this._extension.getSettings(
-                "org.gnome.shell.extensions.healthy-eyes"
+                "org.gnome.shell.extensions.healthy-eyes",
             );
         }
 

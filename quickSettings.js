@@ -1,6 +1,6 @@
 /*
  * Gnome Eye Care
- * Copyright (C) 2022, 2023, 2024 me@tobias.ws
+ * Copyright (C) 2022 - 2026 Tobias me@tobias.ws
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ export const EyeCareIndicator = GObject.registerClass(
                 .getUserSettings()
                 .bind(KEY_ENABLED, this._indicator, "visible", Gio.SettingsBindFlags.DEFAULT);
         }
-    }
+    },
 );
 
 /**
@@ -72,5 +72,5 @@ export const EyeCareToggle = GObject.registerClass(
                 .getUserSettings()
                 .bind(KEY_ENABLED, this, "checked", Gio.SettingsBindFlags.DEFAULT);
         }
-    }
+    },
 );
