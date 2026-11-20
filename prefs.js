@@ -12,6 +12,7 @@ import {
 } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
 
 import {
+    SCHEMA_ID,
     KEY_SHOW_INDICATOR,
     KEY_SHOW_NOTIFICATION,
     KEY_NOTIFY_BEFORE,
@@ -60,8 +61,7 @@ export default class ExamplePreferences extends ExtensionPreferences {
      * @param {Adw.PreferencesWindow} window - the preferences window
      */
     fillPreferencesWindow(window) {
-        // Use the same GSettings schema as in `extension.js`
-        const settings = this.getSettings("org.gnome.shell.extensions.healthy-eyes");
+        const settings = this.getSettings(SCHEMA_ID);
 
         // Create a preferences page and group
         const page = new Adw.PreferencesPage();

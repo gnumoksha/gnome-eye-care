@@ -5,6 +5,7 @@
 // paths start with resource:///org/gnome/Shell/Extensions/js/
 //import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 
+export const SCHEMA_ID = "org.gnome.shell.extensions.gnome-eye-care";
 export const KEY_ENABLED = "enabled"; // unused. Must be added into the schema
 export const KEY_SHOW_INDICATOR = "show-indicator";
 export const KEY_SHOW_NOTIFICATION = "show-notification";
@@ -46,9 +47,7 @@ export class ExtensionSettings {
      */
     getUserSettings() {
         if (this._extensionSettings == null) {
-            this._extensionSettings = this._extension.getSettings(
-                "org.gnome.shell.extensions.healthy-eyes",
-            );
+            this._extensionSettings = this._extension.getSettings(SCHEMA_ID);
         }
 
         return this._extensionSettings;
