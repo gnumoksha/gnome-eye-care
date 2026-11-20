@@ -1,13 +1,15 @@
 {
   "name": "Gnome Eye Care",
   "description": "Helps you to keep your eyes healthy by following the 20-20-20 rule.",
-  "uuid": "gnome-eye-care@gnumoksha.gitlab.io",
+  "uuid": "gnome-eye-care@gnumoksha.github.io",
   "shell-version": [
-    "46"
+    "46",
+    "47",
+    "48"
   ],
   "session-modes": [
     "user"
   ],
-  "url": "https://gitlab.com/gnumoksha/gnome-eye-care",
-  "version": 2
+  "url": "https://github.com/gnumoksha/gnome-eye-care",
+  "version": 3
 }

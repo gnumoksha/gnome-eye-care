@@ -1,6 +1,6 @@
 /*
  * Gnome Eye Care
- * Copyright (C) 2022, 2023, 2024 me@tobias.ws
+ * Copyright (C) 2022 - 2026 Tobias me@tobias.ws
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -149,7 +149,7 @@ export default class EyeCareExtension extends Extension {
                 KEY_SHOW_INDICATOR,
                 this._panelMenuIndicator,
                 "visible",
-                Gio.SettingsBindFlags.DEFAULT
+                Gio.SettingsBindFlags.DEFAULT,
             );
 
         /**
@@ -241,18 +241,20 @@ export default class EyeCareExtension extends Extension {
                 this._settings.getBreakIntervalSeconds() - this._timerState.elapsedSeconds;
 
             if (
-                this._settings.canShowNotification() &&
-                this._timerState.remainingSeconds == this._settings.getNotificationBefore()
+                this._timerState.remainingSeconds == this._settings.getNotificationBefore() &&
+                this._settings.canShowNotification()
             ) {
                 this._notifier.notify(
                     _("Time is approaching"),
-                    _("The time to take a break is approaching")
+                    _("The time to take a break is approaching"),
                 );
                 return GLib.SOURCE_CONTINUE;
             }
 
             if (this._timerState.remainingSeconds <= 0) {
-                this._showNotificationDialog();
+                if (!this.isAnyMonitorInFullscreen()) {
+                    this._showNotificationDialog();
+                }
                 this._timerState.reset();
             }
 
@@ -270,5 +272,16 @@ export default class EyeCareExtension extends Extension {
         // the dialog will run for >= 20 seconds so, we need to restart the
         // timer in order to not count the time the dialog was open
         this._timerState.reset();
+    }
+
+    isAnyMonitorInFullscreen() {
+        const monitorCount = global.display.get_n_monitors();
+        for (let i = 0; i < monitorCount; i++) {
+            if (global.display.get_monitor_in_fullscreen(i)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
